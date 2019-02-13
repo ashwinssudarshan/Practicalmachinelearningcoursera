@@ -1,0 +1,92 @@
+---
+title: "Coursera ML Project"
+author: "Ashwin Sudarshan"
+date: "2/13/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+
+This R markdown file is going to explain to you as to how I did my machine learning project for the course "Practical Machine Learning" offered by John Hopkins University on Coursera.
+
+In this Assignment we were given data that was collected by a group of people. We were supposed to predict a variable called "classe" with the help of the other variables. The choice of variables used for the prediction was upto the user as long as he can justify his decision and can provide a model with good accuracy which was tested in a prediction quiz. A brief explanation to the data is as follows:
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset).
+
+Since the dataset model took a lot of time to build due to the vast amount of data, I am only going to display the code that I used to do the assignment. It is upto the person evaluating the project to run and check it out.(Please be warned, I spent an hour waiting for the model to get built)
+
+To begin with, I will write a code for all the packages that I used in this project
+```{r packages}
+library(caret)
+library(parallel)
+library(doParallel)
+library(knitr)
+```
+
+## Loading and PreProcessing the Data
+
+To begin with, I am going to load the data on R.
+
+```{r loaddata, eval=FALSE}
+a<-read.csv("pml-training.csv")
+```
+
+Now, I observed that there were certain columns where a majority of the values were NA. So, I decided to get rid of those values because they were not going to be much of a help when it comes to predicting the value. In these columns, there were around 67 columns with around 19216 NA values. This is more than 90% of the data we have.
+
+```{r removeNA, eval=FALSE}
+names<-sapply(a, function(x) sum(is.na(x)))
+logic<-names==19216
+logic<-!logic
+traindata<-a[,logic]
+```
+
+Now we are left with 93 features. I am going to remove features whose variance is very close to zero(nearly zero). After this, our number of features comes down to 59. Also, we are going to remove the X and user_name feature from the data because these are redundant when it comes to predicticting the classe variable.
+
+```{r reducefeatures, eval=FALSE}
+nzv<-nearZeroVar(traindata)
+nzv<-nearZeroVar(traindata)
+newtraindata<-traindata[,-nzv]
+new2traindata<-newtraindata[,-c(1,2)]
+```
+
+Now we are left with 57 features and we are going to build our model with these features.
+
+## Using Parallel Processing to run our code
+
+Since this is a very large dataset, I had to used parallel processing to run the code. The commands to do this is as follows:
+
+```{r Parallelprocessing, eval=FALSE}
+cluster<-makeCluster(detectCores()-1)
+registerDoParallel(cluster)
+```
+
+## Building the actual model
+
+Now to build the actual model, I used a general random forest algorithm with 5 folds and 10 trees. I decided to build the model and based on the confusion matrix accuracy, make my changes and reduce features if necessary. So, I started to build the model. I am only displaying the code here for the viewer's comfort. It takes a lot of time to run on my laptop and isn't a very efficient code.
+
+```{r Model, eval=FALSE}
+fitcontrol<-trainControl(method = "cv", number = 5, allowParallel = TRUE)
+model<-train(classe~., data = new2traindata, method="rf", trcontrol=fitcontrol, ntrees=10)
+```
+
+Now I made the prediction with this model and compared it with the classe values from the actual dataframe and made a confusion matrix for the same.
+
+```{r confusionmatrix, eval=FALSE}
+predval<-predict(model, new2traindata)
+confusionMatrix(predval, new2traindata$classe)
+```
+
+Now, I am just going to display the result of my code in the form of a picture. The result of my confusionMatrix is as follows:
+
+```{r Matrixresult}
+include_graphics("ConfusionMatrix.png")
+```
+
+## Result
+
+I had tried out the prediction quiz before I made this submission and the accuracy in the test set was **100%(20/20)**. This is probably because the test set was too small. The actual accuracy of the algorithm only becomes clear when you apply it to a larger dataset.
+
